@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 
-// Sunucu tarafı veri getirme
+// Server-side data fetching
 export async function getServerSideProps(context) {
   try {
     const ipResponse = await fetch(
@@ -20,7 +20,7 @@ export async function getServerSideProps(context) {
       props: { ipData },
     };
   } catch (error) {
-    console.error("IP verisi alınamadı:", error);
+    console.error("IP data fetch error:", error);
     return {
       props: { ipData: null },
     };
@@ -38,10 +38,10 @@ export default function IpChecker({ ipData }) {
   const [bannerColor, setBannerColor] = useState("");
   const [portStatus, setPortStatus] = useState("");
 
-  // IP, Hız ve Port Kontrolü
+  // Check IP, speed, and port
   const handleCheckAll = async () => {
     if (!ip) {
-      setError("Lütfen bir IP adresi girin.");
+      setError("Please enter an IP address.");
       return;
     }
     setError("");
@@ -49,14 +49,14 @@ export default function IpChecker({ ipData }) {
     setPortStatus("");
 
     try {
-      // IP Kontrolü
+      // IP check
       const ipResponse = await fetch(
         `https://ipinfo.io/${ip}?token=faac19cdc35949`
       );
       const ipData = await ipResponse.json();
 
       if (ipData.error) {
-        setError("Geçersiz IP adresi.");
+        setError("Invalid IP address.");
         setUserIpData(null);
       } else {
         setUserIpData({
@@ -65,35 +65,35 @@ export default function IpChecker({ ipData }) {
           region: ipData.region,
           country: ipData.country,
           isp: ipData.org,
-          hostname: ipData.hostname || "Bilinmiyor",
-          type: ipData.bogon ? "Geçersiz IP" : "Potansiyel Dinamik IP",
+          hostname: ipData.hostname || "Unknown",
+          type: ipData.bogon ? "Invalid IP" : "Potential Dynamic IP",
         });
       }
 
-      // İnternet Hız Testi
+      // Internet speed test
       await checkInternetSpeed();
 
-      // Port Kontrolü
+      // Port check
       if (port) {
         await checkPort(ip, port);
       }
     } catch (err) {
-      setError("Bir hata oluştu.");
+      setError("An error occurred.");
     } finally {
       setLoading(false);
     }
   };
 
-  // İnternet Hızını Test Et
+  // Check internet speed
   const checkInternetSpeed = async () => {
-    setSpeedDisplay("Ölçülüyor...");
+    setSpeedDisplay("Measuring...");
     const startTime = Date.now();
 
     try {
       const response = await fetch(
         "https://speed.cloudflare.com/__down?bytes=10000000"
       );
-      if (!response.ok) throw new Error("Hız testi başarısız");
+      if (!response.ok) throw new Error("Speed test failed");
 
       const duration = (Date.now() - startTime) / 1000;
       const speedMbps = (10 / duration) * 8; // Mbps
@@ -101,7 +101,7 @@ export default function IpChecker({ ipData }) {
       setSpeedValue(speedMbps);
       setSpeedDisplay(speedMbps.toFixed(2) + " Mbps");
 
-      // Banner Rengini Belirle
+      // Set banner color based on speed
       if (speedMbps < 20) {
         setBannerColor("bg-red-500");
       } else if (speedMbps > 75) {
@@ -110,11 +110,12 @@ export default function IpChecker({ ipData }) {
         setBannerColor("bg-yellow-500");
       }
     } catch (error) {
-      setSpeedDisplay("Ölçülemedi");
+      setSpeedDisplay("Could not measure");
       setBannerColor("bg-gray-500");
     }
   };
 
+  // Check port
   const checkPort = async (ip, port) => {
     try {
       const response = await axios.post("https://portchecker.io/api/query", {
@@ -124,51 +125,53 @@ export default function IpChecker({ ipData }) {
 
       const result = response.data;
       if (result.open) {
-        setPortStatus(`✅ ${port} portu açık!`);
+        setPortStatus(`✅ Port ${port} is open!`);
       } else {
-        setPortStatus(`❌ ${port} portu kapalı!`);
+        setPortStatus(`❌ Port ${port} is closed!`);
       }
     } catch (error) {
-      setPortStatus("⚠️ Port kontrolü yapılamadı.");
+      setPortStatus("⚠️ Port check failed.");
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-blue-300 to-blue-500">
-      {/* RMOS Yazılım Reklam Banner'ı - Hareketli ve Renkli */}
+      {/* RMOS Software Advertisement Banner */}
       <div className="w-full p-4 text-center text-white font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 animate-pulse">
         <Typography variant="h6">
-          💡 Siz neden hala RMOS POS Sistemi'ne geçmeyi düşünmüyorsunuz? 💻
+          💡 Why haven't you switched to RMOS POS System yet? 💻
         </Typography>
       </div>
 
-      <Card className="p-4 w-1/4 shadow-2xl bg-white rounded-lg mt-4">
+      <Card className="p-4 w-full sm:w-1/2 md:w-1/4 shadow-2xl bg-white rounded-lg mt-4">
         <Typography variant="h5" className="text-center font-bold mb-4">
-          🌍 <span className="text-blue-600">IP Kontrol ve Hız Testi</span>
+          🌍 <span className="text-blue-600">IP Check and Speed Test</span>
         </Typography>
 
-        <div className="flex gap-2 mb-2 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-2 mb-2 justify-center items-center">
           <TextField
             fullWidth
-            label="IP adresini girin"
+            label="Enter IP address"
             variant="outlined"
             value={ip}
             onChange={(e) => setIp(e.target.value)}
+            className="mb-2 sm:mb-0"
           />
           <TextField
             fullWidth
-            label="Port numarasını girin"
+            label="Enter port number"
             variant="outlined"
             value={port}
             onChange={(e) => setPort(e.target.value)}
+            className="mb-2 sm:mb-0"
           />
           <Button
             variant="contained"
             color="error"
             onClick={handleCheckAll}
             disabled={loading}
-            className="flex items-center justify-center"
-            size="large" // Buton boyutunu büyük yapar
+            className="flex items-center justify-center mt-2 sm:mt-0"
+            size="large"
           >
             🚀 TEST
           </Button>
@@ -179,14 +182,14 @@ export default function IpChecker({ ipData }) {
 
         {userIpData && (
           <div className="mt-4 p-4 bg-gray-100 rounded-lg shadow-lg">
-            <Typography variant="h6">🌐 IP Bilgileri</Typography>
+            <Typography variant="h6">🌐 IP Information</Typography>
             <Typography>📡 IP: {userIpData.ip}</Typography>
-            <Typography>🌆 Şehir: {userIpData.city}</Typography>
-            <Typography>📍 Bölge: {userIpData.region}</Typography>
-            <Typography>🌍 Ülke: {userIpData.country}</Typography>
+            <Typography>🌆 City: {userIpData.city}</Typography>
+            <Typography>📍 Region: {userIpData.region}</Typography>
+            <Typography>🌍 Country: {userIpData.country}</Typography>
             <Typography>📶 ISP: {userIpData.isp}</Typography>
             <Typography>💻 Hostname: {userIpData.hostname}</Typography>
-            <Typography>🔑 IP Türü: {userIpData.type}</Typography>
+            <Typography>🔑 IP Type: {userIpData.type}</Typography>
           </div>
         )}
 
@@ -194,7 +197,7 @@ export default function IpChecker({ ipData }) {
           <div
             className={`mt-6 p-4 rounded-lg shadow-xl text-white ${bannerColor}`}
           >
-            <Typography variant="h5">🚀 İnternet Hızınız</Typography>
+            <Typography variant="h5">🚀 Internet Speed</Typography>
             <Typography className="text-lg">{speedDisplay}</Typography>
           </div>
         )}
